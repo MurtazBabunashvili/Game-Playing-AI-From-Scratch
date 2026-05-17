@@ -150,6 +150,41 @@ class GridWorld:
         row, col = state
         return 0 <= row < self.rows and 0 <= col < self.cols
 
+    def get_transition(self, state, action):
+        """
+         V(s) ← Σ_a π(a|s) Σ_{s',r} p(s',r|s,a) [r + γV(s')]
+
+         Parameters:
+             state : (row, col)
+             action : int (UP=0, DOWN=1, LEFT=2, RIGHT=3)
+
+         Returns:
+             transitions : list of (next_state, reward, probability)
+                            Tuples for this deterministic gridworld always length 1 so
+                            probability is always 1.0
+        """
+
+        row, col = state
+
+        if state == self.state_A:
+            return [(self.state_A_, 10.0, 1.0)]
+
+        if state == self.state_B:
+            return [(self.state_B_, 5.0, 1.0)]
+
+        #Normal movement
+        dr, dc = self.MOVES[action]
+        new_row = row + dr
+        new_col = col + dc
+
+        #Off grid -> bounce back with reward -1
+        if not self.is_valid_state((new_row, new_col)):
+            return [(state, -1.0, 1.0)]
+
+        #Valid move -> reward 0
+        return [((new_row, new_col), 0.0, 1.0)]
+
+
     #Print grid to console, showing agent's current position
     def render(self):
         """
