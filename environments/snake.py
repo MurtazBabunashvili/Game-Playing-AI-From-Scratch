@@ -42,7 +42,7 @@ class SnakeEnv(gym.Env):
         self.grid_size = grid_size
         self.max_steps = max_steps
 
-        self.observation_space = spaces.Box(low=0.0, high=1.0, shape=(11,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=0.0, high=1.0, shape=(23,), dtype=np.float32)
 
         self.action_space = spaces.Discrete(3) #straight left right
 
@@ -125,7 +125,7 @@ class SnakeEnv(gym.Env):
 
     def get_obs(self):
         """
-        Build 11-dimensional binary state vector
+        Build 23-dimensional binary state vector
 
         Returns:
             obs : np.ndarray shape (11,) dtype float32
@@ -134,30 +134,75 @@ class SnakeEnv(gym.Env):
         head = self.snake[0]
         dir_idx = self.DIRECTIONS.index(self.direction)
 
-        straight_cell = self.cell_in_direction(head, self.direction)
-        right_cell = self.cell_in_direction(head, self.DIRECTIONS[(dir_idx + 1) % 4])
-        left_cell = self.cell_in_direction(head, self.DIRECTIONS[(dir_idx - 1)% 4])
+        straight_dir = self.DIRECTIONS[dir_idx]
+        right_dir = self.DIRECTIONS[(dir_idx + 1) % 4]
+        left_dir = self.DIRECTIONS[(dir_idx - 1) % 4]
 
-        food_row, food_col = self.food
+
+
+        # Danger lookahead (6 values)
+        danger = []
+        for direction in [straight_dir, right_dir, left_dir]:
+            cell = head
+            for _ in range(2):
+                cell = self.cell_in_direction(cell, direction)
+                danger.append(float(self.is_collision(cell)))
+
+        #Wall distances (4 values)
         head_row, head_col = head
+        wall_up = head_row / self.grid_size
+        wall_down = (self.grid_size - 1 - head_row) / self.grid_size
+        wall_left = head_col / self.grid_size
+        wall_right = (self.grid_size -1 - head_col) / self.grid_size
 
-        obs = np.array([
-            # Danger flags
-            float(self.is_collision(straight_cell)),
-            float(self.is_collision(right_cell)),
-            float(self.is_collision(left_cell)),
 
-            # Current direction (one-hot)
+        #Tail distance
+        tail_row, tail_col = self.snake[-1]
+        tail_dist = (abs(head_row - tail_row) + abs(head_col - tail_col)) / (2 * self.grid_size)
+
+        #Direction (one ahead)  4 values
+        dir_one = [
             float(self.direction == self.LEFT),
             float(self.direction == self.RIGHT),
             float(self.direction == self.UP),
             float(self.direction == self.DOWN),
+        ]
 
+        #Food direction (4 values)
+        food_row, food_col = self.food
+        head_row, head_col = head
+
+        food_dir = np.array([
             #Food direction relative to head
             float(food_col < head_col), #food is left
             float(food_col > head_col), #food is right
             float(food_row < head_row), #Food is up
             float(food_row > head_row) #Food is down
+        ], dtype=np.float32)
+
+        #Food normalized absolute distances 2 values
+        food_dist_row = abs(food_row - head_row) / self.grid_size
+        food_dist_col = abs(food_col - head_col) / self.grid_size
+
+        #Snake length  normalized
+        snake_length = len(self.snake) / (self.grid_size ** 2)
+
+        #Steps without food normalized
+        steps_no_food = self.steps_done / self.max_steps
+
+        obs = np.array([
+            *danger,
+            *dir_one,
+            *food_dir,
+            wall_up,
+            wall_down,
+            wall_left,
+            wall_right,
+            tail_dist,
+            food_dist_row,
+            food_dist_col,
+            snake_length,
+            steps_no_food
         ], dtype=np.float32)
 
         return obs
