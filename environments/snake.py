@@ -1,8 +1,5 @@
-from os import terminal_size
-
 import numpy as np
 import gymnasium as gym
-from cupy import vectorize
 from gymnasium import spaces
 from collections import deque
 
@@ -108,7 +105,7 @@ class SnakeEnv(gym.Env):
         terminated = self.is_collision(new_head)
 
         if terminated:
-            reward -= 10.0
+            reward = -10.0
             return self.get_obs(), reward, terminated, False, {"score": self.score}
 
         self.snake.appendleft(new_head)
@@ -139,7 +136,7 @@ class SnakeEnv(gym.Env):
 
         straight_cell = self.cell_in_direction(head, self.direction)
         right_cell = self.cell_in_direction(head, self.DIRECTIONS[(dir_idx + 1) % 4])
-        left_cell = self.cell_in_direction(head, self.DIRECTIONS[(dir_idx - 1)]% 4)
+        left_cell = self.cell_in_direction(head, self.DIRECTIONS[(dir_idx - 1)% 4])
 
         food_row, food_col = self.food
         head_row, head_col = head
