@@ -53,3 +53,4 @@ def extract_policy_from_q(env, Q, epsilon=0.0):
             else:
                 policy[s][a] = epsilon / n_actions
     return policy
+
