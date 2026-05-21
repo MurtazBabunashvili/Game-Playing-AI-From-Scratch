@@ -35,7 +35,10 @@ def train(env_id="CartPole-v1", n_episodes=600, hidden_dim=128, lr=3e-4, gamma=0
     device= "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
 
-    env = gym.make(env_id)
+    if isinstance(env_id, str):
+        env = gym.make(env_id)
+    else:
+        env = env_id
 
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n

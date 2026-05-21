@@ -100,7 +100,7 @@ class DQNAgent:
         actions = torch.LongTensor(actions).to(self.device)
         rewards = torch.FloatTensor(rewards).to(self.device)
         next_states = torch.FloatTensor(next_states).to(self.device)
-        dones = torch.BoolType(dones).to(self.device)
+        dones = torch.BoolTensor(dones).to(self.device)
 
         current_q_values = self.q_network(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
