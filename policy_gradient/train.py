@@ -4,6 +4,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from policy_gradient.reinforce import REINFORCEAgent
+from policy_gradient.actor_critic import ActorCriticAgent
 
 def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, baseline_lr=1e-3, gamma=0.99, print_every=50, save_path=None):
     """
@@ -72,6 +73,57 @@ def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, baseli
         torch.save(agent.policy.state_dict(), save_path)
         print(f"\nPolicy saved to: {save_path}")
     return episode_rewards
+
+
+def train_actor_critic(env_id="CartPole-v1", n_episodes=600, hidden_dim=128,
+                       actor_lr = 1e-3, critic_lr=5e-3, gamma=0.99,
+                       print_every=50, save_path=None):
+    #One step Actor-Critic training loop
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+
+    env = gym.make(env_id)
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.n
+
+    agent = ActorCriticAgent(state_dim, action_dim, hidden_dim, actor_lr, critic_lr, gamma, device)
+
+    episode_rewards = []
+
+    for episode_i in range(n_episodes):
+        obs, _ = env.reset()
+        state = np.array(obs, dtype=np.float32)
+
+        I = 1.0
+        episode_reward = 0.0
+
+        while True:
+            action, log_prob = agent.select_action(state)
+            next_obs, reward, terminated, truncated, _ = env.step(action)
+
+            done = terminated or truncated
+            next_state = np.array(next_obs, dtype=np.float32)
+
+            I = agent.update(state, log_prob, reward, next_state, done, I)
+
+            episode_reward += reward
+            state = next_state
+
+            if done:
+                break
+        episode_rewards.append(episode_reward)
+
+        if (episode_i + 1) % print_every == 0:
+            avg = np.mean(episode_rewards[-print_every:])
+            print(f"Episode {episode_i + 1:4d} / {n_episodes}. Average reward (for last {print_every} episodes): {avg:7.2f}")
+    env.close()
+
+    if save_path is not None:
+        torch.save(agent.actor.state_dict(), save_path)
+        print(f"\nActor saved to {save_path}")
+
+    return episode_rewards
+
 
 
 def plot_training_curve(episode_rewards, title="REINFORCE Training Curve", window=50):

@@ -6,7 +6,7 @@ if __name__ == "__main__":
         n_episodes=600,
         hidden_dim=128,
         lr=1e-3,
-        baseline_lr=1e-3,
+        baseline_lr=5e-3,
         gamma=1.0,
         print_every=50,
         save_path="reinforce_cartpole.pth"
