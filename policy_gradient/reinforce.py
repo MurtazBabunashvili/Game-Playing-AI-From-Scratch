@@ -65,7 +65,7 @@ class ValueNetwork(nn.Module):
         self.network = nn.Sequential(
             nn.Linear(state_dim, hidden_dim), nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
-            nn.ReLU(), nn.Linear(hidden_dim, 1)
+            nn.Linear(hidden_dim, 1)
         )
 
     def forward(self, x):
@@ -138,9 +138,9 @@ class REINFORCEAgent:
 
         # Build loss: L = -Σ_t γ^t Gt ln π(At|St, θ)
         policy_loss = 0.0
-        for t, (log_prob, G_t) in enumerate(zip(log_probs, returns)):
-            gamma_t = self.gamma ** t  # γ^t
-            policy_loss += -gamma_t * G_t * log_prob
+        for t, (log_prob, delta) in enumerate(zip(log_probs, deltas)):
+            gamma_t = self.gamma ** t
+            policy_loss += -gamma_t * delta * log_prob
 
         self.optimizer.zero_grad()
         policy_loss.backward()
