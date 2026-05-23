@@ -107,17 +107,20 @@ class ActorCriticAgent:
         next_state_tensor = torch.FloatTensor(next_state).unsqueeze(0).to(self.device)
 
         value = self.critic(state_tensor)
-        next_value = self.critic(next_state_tensor).detach()
+        with torch.no_grad():
+            next_value = self.critic(next_state_tensor).detach()
 
         # If S' is terminal then v̂(S', w) = 0
         if done:
             next_value = torch.zeros(1).to(self.device)
 
         # δ = R + γv̂(S', w) - v̂(S, w)
-        delta = reward + self.gamma * next_value - value
+        target = reward + self.gamma * next_value
+        delta = (target - value).item()
 
-        critic_loss = delta.detach() * (-value)
-        actor_loss = -I * delta.detach() * log_prob
+
+        critic_loss = nn.MSELoss()(value, target.detach() if not done else torch.FloatTensor([reward]).to(self.device))
+        actor_loss = -I * delta * log_prob
 
 
         # Update critic

@@ -5,9 +5,9 @@ if __name__ == "__main__":
         env_id="CartPole-v1",
         n_episodes=600,
         hidden_dim=128,
-        actor_lr=1e-3,
-        critic_lr=5e-3,
-        gamma=1.0,
+        actor_lr=3e-4,
+        critic_lr=1e-3,
+        gamma=0.99,
         print_every=50,
         save_path="actor_critic_cartpole.pth"
     )
