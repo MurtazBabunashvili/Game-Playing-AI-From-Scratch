@@ -76,9 +76,9 @@ def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, baseli
 
 
 def train_actor_critic(env_id="CartPole-v1", n_episodes=600, hidden_dim=128,
-                       actor_lr = 1e-3, critic_lr=5e-3, gamma=0.99,
+                       actor_lr=1e-3, critic_lr=5e-3, gamma=0.99,
+                       lambda_actor=0.9, lambda_critic=0.9,
                        print_every=50, save_path=None):
-    #One step Actor-Critic training loop
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
 
@@ -86,7 +86,9 @@ def train_actor_critic(env_id="CartPole-v1", n_episodes=600, hidden_dim=128,
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 
-    agent = ActorCriticAgent(state_dim, action_dim, hidden_dim, actor_lr, critic_lr, gamma, device)
+    agent = ActorCriticAgent(state_dim, action_dim, hidden_dim,
+                             actor_lr, critic_lr, gamma,
+                             lambda_actor, lambda_critic, device)
 
     episode_rewards = []
 
@@ -94,6 +96,7 @@ def train_actor_critic(env_id="CartPole-v1", n_episodes=600, hidden_dim=128,
         obs, _ = env.reset()
         state = np.array(obs, dtype=np.float32)
 
+        agent.reset_traces()   # ← z^θ ← 0, z^w ← 0  at episode start
         I = 1.0
         episode_reward = 0.0
 
@@ -104,7 +107,7 @@ def train_actor_critic(env_id="CartPole-v1", n_episodes=600, hidden_dim=128,
             done = terminated or truncated
             next_state = np.array(next_obs, dtype=np.float32)
 
-            I = agent.update(state, log_prob, reward, next_state, done, I)
+            I = agent.update(state, log_prob, reward, next_state, terminated, I)
 
             episode_reward += reward
             state = next_state
@@ -153,4 +156,3 @@ def plot_training_curve(episode_rewards, title="REINFORCE Training Curve", windo
     plt.savefig("reinforce_curve.png", dpi=150)
     plt.show()
     print("Plot saved to reinforce_curve.png")
-
