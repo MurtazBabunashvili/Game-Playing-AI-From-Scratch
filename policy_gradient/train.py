@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from policy_gradient.reinforce import REINFORCEAgent
 
-def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, gamma=0.99, print_every=50, save_path=None):
+def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, baseline_lr=1e-3, gamma=0.99, print_every=50, save_path=None):
     """
     REINFORCE training loop
 
@@ -29,7 +29,7 @@ def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, gamma=
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 
-    agent = REINFORCEAgent(state_dim, action_dim, hidden_dim, lr, gamma, device)
+    agent = REINFORCEAgent(state_dim, action_dim, hidden_dim, lr, baseline_lr, gamma, device)
 
     episode_rewards = []
 
@@ -41,7 +41,12 @@ def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, gamma=
         log_probs = []
         rewards = []
 
+        states = []
+
         while True:
+
+            states.append(state)
+
             action, log_prob = agent.select_action(state)
             next_obs, reward, terminated, truncated, _ = env.step(action)
 
@@ -52,7 +57,7 @@ def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, gamma=
 
             if terminated or truncated:
                 break
-        agent.update(log_probs, rewards)
+        agent.update(log_probs, rewards, states)
 
         episode_reward = sum(rewards)
         episode_rewards.append(episode_reward)
