@@ -106,7 +106,8 @@ class DQNAgent:
 
         with torch.no_grad():
             # Target Q values: r + γ max_a' Q(s', a'; θ⁻)
-            max_next_q_values = self.target_network(next_states).max(dim=1)[0]
+            next_actions = self.q_network(next_states).argmax(dim=1, keepdim=True)
+            max_next_q_values = self.target_network(next_states).gather(1, next_actions).squeeze(1)
             #Terminal states has no future rewards so only r
             td_targets = rewards + self.gamma * max_next_q_values * (~dones)
 

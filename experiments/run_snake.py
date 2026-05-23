@@ -2,18 +2,18 @@ from environments.snake import SnakeEnv
 from dqn.train import train, plot_training_curve
 
 if __name__ == "__main__":
-    env = SnakeEnv(grid_size=10, max_steps=500)
+    env = SnakeEnv(grid_size=10, max_steps=1000)
 
     rewards = train(
         env_id=env,
-        n_episodes=1000,
-        hidden_dim=128,
-        lr=3e-4,
+        n_episodes=2000,
+        hidden_dim=256,
+        lr=1e-4,
         gamma=0.95,
         epsilon_start=1.0,
         epsilon_end=0.01,
-        epsilon_decay=0.9995,
-        buffer_capacity=50_000,
+        epsilon_decay=0.9998,
+        buffer_capacity=100_000,
         batch_size=64,
         target_update_freq=200,
         print_every=50,
