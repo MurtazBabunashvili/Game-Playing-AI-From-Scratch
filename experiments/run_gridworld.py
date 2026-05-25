@@ -16,6 +16,8 @@ Methods demonstrated:
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from utils.plotting import plot_comparison
+
 
 from environments.gridworld import GridWorld
 from tabular.policy_evaluation import policy_evaluation, make_random_policy
@@ -102,26 +104,6 @@ def plot_learning_curve(history, title="Learning Curve", label="reward", color="
         smoothed = np.convolve(history, np.ones(window) / window, mode="valid")
         ax.plot(range(window - 1, len(history)), smoothed,
                 color=color, linewidth=2, label=f"{label} (avg {window})")
-
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Total Reward")
-    ax.set_title(title, fontsize=13, fontweight="bold")
-    ax.legend()
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_comparison(history1, history2, label1="SARSA", label2="Q-Learning",
-                    title="SARSA vs Q-Learning", window=20):
-    fig, ax = plt.subplots(figsize=(8, 4))
-
-    for history, label, color in [(history1, label1, "steelblue"),
-                                   (history2, label2, "tomato")]:
-        ax.plot(history, alpha=0.2, color=color)
-        if len(history) >= window:
-            smoothed = np.convolve(history, np.ones(window) / window, mode="valid")
-            ax.plot(range(window - 1, len(history)), smoothed,
-                    color=color, linewidth=2, label=label)
 
     ax.set_xlabel("Episode")
     ax.set_ylabel("Total Reward")

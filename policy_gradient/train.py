@@ -1,10 +1,11 @@
 import numpy as np
 import gymnasium as gym
 import torch
-import matplotlib.pyplot as plt
 
 from policy_gradient.reinforce import REINFORCEAgent
 from policy_gradient.actor_critic import ActorCriticAgent
+from utils.logger import TrainingLogger
+
 
 def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, baseline_lr=1e-3, gamma=0.99, print_every=50, save_path=None):
     """
@@ -25,6 +26,8 @@ def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, baseli
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
+
+    logger = TrainingLogger(run_name=f"dqn_{env_id}", print_every=print_every, log_dir="runs")
 
     env = gym.make(env_id)
     state_dim = env.observation_space.shape[0]
@@ -63,9 +66,7 @@ def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, baseli
         episode_reward = sum(rewards)
         episode_rewards.append(episode_reward)
 
-        if (episode_i + 1) % print_every == 0:
-            avg = np.mean(episode_rewards[-print_every:])
-            print(f"Episode {episode_i + 1:4d} / {n_episodes}. Average reward (for last {print_every}): {avg:7.2f}")
+        logger.log(episode_i, episode_reward)
 
     env.close()
 
@@ -128,31 +129,3 @@ def train_actor_critic(env_id="CartPole-v1", n_episodes=600, hidden_dim=128,
     return episode_rewards
 
 
-
-def plot_training_curve(episode_rewards, title="REINFORCE Training Curve", window=50):
-    """
-    Plot total reward per episode with smoothed moving average overlay.
-
-    Parameters:
-        episode_rewards : list of floats
-        title           : str
-        window          : int. Moving average window
-    """
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-
-    ax.plot(episode_rewards, alpha=0.2, color="steelblue", label="raw reward")
-
-    if len(episode_rewards) >= window:
-        smoothed = np.convolve(episode_rewards, np.ones(window) / window, mode="valid")
-        ax.plot(range(window - 1, len(episode_rewards)), smoothed,
-                color="steelblue", linewidth=2, label=f"avg ({window} episodes)")
-
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Total Reward")
-    ax.set_title(title, fontsize=13, fontweight="bold")
-    ax.legend()
-    plt.tight_layout()
-    plt.savefig("reinforce_curve.png", dpi=150)
-    plt.show()
-    print("Plot saved to reinforce_curve.png")

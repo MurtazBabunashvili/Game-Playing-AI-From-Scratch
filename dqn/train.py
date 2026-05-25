@@ -1,9 +1,10 @@
 import gymnasium as gym
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
 
 from dqn.agent import DQNAgent
+from utils.logger import TrainingLogger
+
 
 def train(env_id="CartPole-v1", n_episodes=600, hidden_dim=128, lr=3e-4, gamma=0.99,
           epsilon_start=0.9, epsilon_end = 0.01, epsilon_decay = 0.995, buffer_capacity=10000,
@@ -35,6 +36,8 @@ def train(env_id="CartPole-v1", n_episodes=600, hidden_dim=128, lr=3e-4, gamma=0
     device= "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
 
+    logger = TrainingLogger(run_name=f"dqn_{env_id}", print_every=print_every, log_dir="runs")
+
     if isinstance(env_id, str):
         env = gym.make(env_id)
     else:
@@ -65,7 +68,7 @@ def train(env_id="CartPole-v1", n_episodes=600, hidden_dim=128, lr=3e-4, gamma=0
 
             agent.store_transition(state, action, reward, next_state, done)
 
-            agent.update()
+            loss = agent.update()
 
             state = next_state
 
@@ -74,44 +77,15 @@ def train(env_id="CartPole-v1", n_episodes=600, hidden_dim=128, lr=3e-4, gamma=0
         episode_rewards.append(episode_reward)
 
 
-        if (episode_i + 1) % print_every == 0:
-            avg_reward = np.mean(episode_rewards[-print_every:])
-            print(
-                f"Episode {episode_i + 1:4d} / {n_episodes} | "
-                f"Avg reward (last {print_every}): {avg_reward:7.2f} | "
-                f"Epsilon: {agent.epsilon:.3f}"
-            )
+        logger.log(episode_i, episode_reward, epsilon=agent.epsilon, loss=loss or 0.0)
+
     env.close()
 
     if save_path is not None:
         agent.save(save_path)
         print(f"\nModel saved to: {save_path}")
 
-    return episode_rewards
+    logger.print_summary()
+    logger.close()
 
-
-def plot_training_curve(episode_rewards, title="DQN Training Curve", window=20):
-    """
-    Plot total reward per episode with a smoothed moving average overlay.
-
-    Parameters:
-        episode_rewards : list of floats. One value per episode
-        title           : str. Plot title
-        window          : int. Moving average window size
-    """
-
-    fig, ax = plt.subplots(figsize=(8, 4))
-
-    ax.plot(episode_rewards, alpha=0.3, color="steelblue", label="raw reward")
-
-    if len(episode_rewards) >= window:
-        smoothed = np.convolve(episode_rewards, np.ones(window) / window, mode="valid")
-        ax.plot(range(window - 1, len(episode_rewards)), smoothed,
-                color="steelblue", linewidth=2, label=f"avg ({window} episodes)")
-
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Total Reward")
-    ax.set_title(title, fontsize=13, fontweight="bold")
-    ax.legend()
-    plt.tight_layout()
-    plt.show()
+    return logger.rewards
