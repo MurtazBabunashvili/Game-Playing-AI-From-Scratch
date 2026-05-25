@@ -238,10 +238,9 @@ def run_sarsa_vs_qlearning():
     print(f"SARSA      avg last 100: {np.mean(history_sarsa[-100:]):.2f}")
     print(f"Q-Learning avg last 100: {np.mean(history_ql[-100:]):.2f}")
 
-    plot_comparison(history_sarsa, history_ql,
-                    label1="SARSA", label2="Q-Learning",
+    plot_comparison([history_sarsa, history_ql],
+                    ["SARSA", "Q-Learning"],
                     title="SARSA vs Q-Learning — GridWorld")
-
 
 
 if __name__ == "__main__":

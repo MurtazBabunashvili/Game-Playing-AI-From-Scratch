@@ -73,8 +73,10 @@ def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, lr=1e-3, baseli
     if save_path is not None:
         torch.save(agent.policy.state_dict(), save_path)
         print(f"\nPolicy saved to: {save_path}")
-    return episode_rewards
 
+    logger.print_summary()
+    logger.close()
+    return logger.rewards
 
 def train_actor_critic(env_id="CartPole-v1", n_episodes=600, hidden_dim=128,
                        actor_lr=1e-3, critic_lr=5e-3, gamma=0.99,
@@ -82,6 +84,8 @@ def train_actor_critic(env_id="CartPole-v1", n_episodes=600, hidden_dim=128,
                        print_every=50, save_path=None):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
+
+    logger = TrainingLogger(run_name=f"actor_critic_{env_id}", print_every=print_every, log_dir="runs")
 
     env = gym.make(env_id)
     state_dim = env.observation_space.shape[0]
@@ -117,15 +121,15 @@ def train_actor_critic(env_id="CartPole-v1", n_episodes=600, hidden_dim=128,
                 break
         episode_rewards.append(episode_reward)
 
-        if (episode_i + 1) % print_every == 0:
-            avg = np.mean(episode_rewards[-print_every:])
-            print(f"Episode {episode_i + 1:4d} / {n_episodes}. Average reward (for last {print_every} episodes): {avg:7.2f}")
+        logger.log(episode_i, episode_reward)
+
     env.close()
 
     if save_path is not None:
         torch.save(agent.actor.state_dict(), save_path)
         print(f"\nActor saved to {save_path}")
 
-    return episode_rewards
-
+    logger.print_summary()
+    logger.close()
+    return logger.rewards
 
