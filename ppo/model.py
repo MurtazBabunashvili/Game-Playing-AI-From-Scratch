@@ -84,5 +84,6 @@ class CriticNetwork(nn.Module):
             nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
             nn.Linear(hidden_dim, 1)
         )
+
     def forward(self, x):
-        return self.network(x).unsqueeze(-1)
+        return self.network(x).squeeze(-1)

@@ -1,4 +1,5 @@
-from policy_gradient.train import train_actor_critic, plot_training_curve
+from policy_gradient.train import train_actor_critic
+from utils.plotting import plot_training_curve
 from utils.config import  ActorCriticConfig
 
 if __name__ == "__main__":

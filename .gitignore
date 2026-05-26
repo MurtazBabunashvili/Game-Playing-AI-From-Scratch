@@ -86,3 +86,7 @@ Pipfile.lock
 .vscode-test/
 
 .python-version
+
+runs/
+*.pth
+*.csv

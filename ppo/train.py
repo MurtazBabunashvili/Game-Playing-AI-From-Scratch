@@ -53,7 +53,7 @@ def train(env_id="CartPole-v1", n_episodes=1000, hidden_dim=128, actor_lr=3e-4, 
         while not done:
             action, log_prob, value = agent.select_action(state)
 
-            next_obs, reward, terminated, truncated, _ = env.step(state)
+            next_obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
             next_state = np.array(next_obs, dtype=np.float32)
 

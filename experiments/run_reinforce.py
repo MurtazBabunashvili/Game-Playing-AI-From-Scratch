@@ -1,4 +1,5 @@
-from policy_gradient.train import train, plot_training_curve
+from policy_gradient.train import train
+from utils.plotting import plot_training_curve
 
 if __name__ == "__main__":
     rewards = train(

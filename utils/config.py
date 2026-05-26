@@ -15,7 +15,9 @@ class BaseConfig:
 
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        d.pop("lr", None)
+        return d
 
     def save(self, path: str) -> None:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
@@ -94,6 +96,30 @@ class ActorCriticConfig(BaseConfig):
     lambda_critic: float = 0.9
     print_every: int = 50
 
+@dataclass
+class PPOConfig(BaseConfig):
+    """
+    Hyperparameters for PPOAgent + train()
+
+        actor_lr        step size α_A for the actor network
+        critic_lr       step size α_C for the critic network
+        clip_epsilon    ε — clipping range for surrogate objective
+        n_epochs        K — update epochs per collected batch
+        batch_size      M — minibatch size
+        entropy_coef    β — entropy regularization weight
+        gae_lambda      λ — GAE trace decay
+        update_interval T — timesteps collected before each PPO update
+    """
+    actor_lr: float = 3e-4
+    critic_lr: float = 1e-3
+    clip_epsilon: float = 0.2
+    n_epochs: int = 10
+    batch_size: int = 64
+    entropy_coef: float = 0.01
+    gae_lambda: float = 0.95
+    update_interval: int = 2048
+    print_every: int = 50
+
 
 @dataclass
 class SnakeConfig(DQNConfig):
@@ -119,7 +145,8 @@ REGISTRY = {
     "dqn":          DQNConfig,
     "reinforce":    REINFORCEConfig,
     "actor_critic": ActorCriticConfig,
-    "snake":        SnakeConfig
+    "snake":        SnakeConfig,
+    "ppo": PPOConfig
 }
 
 def get_config(name: str, **overrides) -> BaseConfig:

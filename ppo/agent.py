@@ -84,7 +84,7 @@ class PPOAgent:
         """
         self.buffer_states.append(np.array(state, dtype=np.float32))
         self.buffer_actions.append(action)
-        self.buffer_log_probabilities.append(log_prob.items())
+        self.buffer_log_probabilities.append(log_prob.item())
         self.buffer_rewards.append(reward)
         self.buffer_dones.append(done)
         self.buffer_values.append(value)
@@ -143,6 +143,8 @@ class PPOAgent:
 
         advantages, returns = self.compute_gae(next_value)
 
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+
         states = torch.FloatTensor(np.array(self.buffer_states)).to(self.device)
         actions = torch.LongTensor(self.buffer_actions).to(self.device)
         old_log_probs = torch.FloatTensor(self.buffer_log_probabilities).to(self.device)
@@ -173,8 +175,8 @@ class PPOAgent:
                 ratios = torch.exp(new_log_probs - mb_old_lp)
 
                 #J^CLIP = E_t[min(r_t A_t, clip(r_t, 1-ε, 1+ε) A_t)]
-                surr1 = ratios * mb_advantages * advantages
-                surr2 = torch.clamp(ratios, 1.0 - self.clip_epsilon, 1.0 + self.clip_epsilon)*mb_advantages
+                surr1 = ratios * mb_advantages
+                surr2 = torch.clamp(ratios, 1.0 - self.clip_epsilon, 1.0 + self.clip_epsilon) * mb_advantages
 
                 j_clip = torch.min(surr1, surr2).mean()
 
