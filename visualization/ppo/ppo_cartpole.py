@@ -72,4 +72,4 @@ def visualize(
 if __name__ == "__main__":
     BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
     MODEL_PATH = os.path.join(BASE_DIR, "..", "..", "experiments", "ppo_cartpole.pth")
-    visualize(model_path=MODEL_PATH, n_episodes=5, fps=60)
+    visualize(model_path=MODEL_PATH, n_episodes=10, fps=120)

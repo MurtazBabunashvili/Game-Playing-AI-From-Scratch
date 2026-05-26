@@ -1,4 +1,3 @@
-import os
 import sys
 import time
 from pathlib import Path
@@ -15,11 +14,33 @@ from environments.pong import PongEnv
 from ppo.agent import PPOAgent
 
 
+MODEL_NAMES = [
+    "solved_rule_defense_ppo_pong.pth",
+    "best_rule_survival_ppo_pong.pth",
+    "best_rule_window_ppo_pong.pth",
+    "ppo_pong_selfplay.pth",
+    "latest_checkpoint_ppo_pong.pth",
+    "best_mixed_ppo_pong.pth",
+    "best_eval_ppo_pong.pth",
+]
+
+
 def greedy_action(agent, state):
     state_tensor = torch.FloatTensor(state).unsqueeze(0).to(agent.device)
     with torch.no_grad():
         logits = agent.actor(state_tensor)
         return int(torch.argmax(logits, dim=-1).item())
+
+
+def rule_based_action(obs):
+    paddle_y = obs[0]
+    ball_y = obs[3]
+
+    if ball_y < paddle_y - 0.03:
+        return 1
+    if ball_y > paddle_y + 0.03:
+        return 2
+    return 0
 
 
 class PongRenderer:
@@ -31,14 +52,14 @@ class PongRenderer:
         self.scale = scale
         self.width = int(env.width * scale)
         self.height = int(env.height * scale)
-        self.info_h = 40
+        self.info_h = 70
 
         self.screen = pygame.display.set_mode((self.width, self.height + self.info_h))
-        pygame.display.set_caption("PPO Self-play Pong")
+        pygame.display.set_caption("PPO Pong Model Tester")
         self.clock = pygame.time.Clock()
-        self.font = pygame.font.SysFont("monospace", 22)
+        self.font = pygame.font.SysFont("monospace", 18)
 
-    def draw(self, episode, score_left, score_right):
+    def draw(self, model_name, episode, score_left, score_right, hits):
         self.screen.fill((20, 20, 20))
 
         pygame.draw.line(
@@ -58,6 +79,7 @@ class PongRenderer:
             paddle_w,
             paddle_h,
         )
+
         opponent_rect = pygame.Rect(
             self.width - paddle_w,
             int((self.env.opponent_y - self.env.paddle_h / 2) * self.scale),
@@ -75,82 +97,184 @@ class PongRenderer:
             max(3, int(2 * self.scale)),
         )
 
-        text = self.font.render(
-            f"Episode {episode}   Left {score_left} : {score_right} Right",
+        line1 = self.font.render(
+            f"Model: {model_name}",
             True,
             (240, 240, 240),
         )
-        self.screen.blit(text, (12, self.height + 8))
+        line2 = self.font.render(
+            f"Episode {episode} | Left PPO {score_left} : {score_right} Rule Bot | Hits: {hits}",
+            True,
+            (240, 240, 240),
+        )
+        line3 = self.font.render(
+            "Keys: N=next model | R=restart model | Q/ESC=quit",
+            True,
+            (180, 180, 180),
+        )
+
+        self.screen.blit(line1, (12, self.height + 5))
+        self.screen.blit(line2, (12, self.height + 27))
+        self.screen.blit(line3, (12, self.height + 49))
+
         pygame.display.flip()
 
     def close(self):
         pygame.quit()
 
 
-def visualize(
-    model_path=None,
-    n_episodes=10,
-    fps=60,
-    hidden_dim=128,
-    deterministic=True,
-):
-    if model_path is None:
-        model_path = ROOT_DIR / "experiments" / "ppo_pong_selfplay.pth"
-    else:
-        model_path = Path(model_path)
-
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model not found at: {model_path}")
-
-    env = PongEnv(max_steps=2000)
-    renderer = PongRenderer(env)
-
+def load_agent(model_path, env, hidden_dim=128):
     agent = PPOAgent(
         state_dim=env.observation_space.shape[0],
         action_dim=env.action_space.n,
         hidden_dim=hidden_dim,
         device="cpu",
     )
+
     agent.load(str(model_path))
     agent.actor.eval()
     agent.critic.eval()
 
+    return agent
+
+
+def existing_models():
+    paths = []
+
+    for name in MODEL_NAMES:
+        path = ROOT_DIR / "experiments" / name
+        if path.exists():
+            paths.append(path)
+        else:
+            print(f"Skipping missing model: {name}")
+
+    return paths
+
+
+def test_model_against_rule(
+    model_path,
+    renderer,
+    env,
+    n_episodes=10,
+    fps=60,
+    hidden_dim=128,
+    deterministic=True,
+):
+    agent = load_agent(model_path, env, hidden_dim=hidden_dim)
+
     score_left = 0
     score_right = 0
+    episode = 1
+
+    while episode <= n_episodes:
+        state, _ = env.reset()
+        state = np.array(state, dtype=np.float32)
+
+        done = False
+        hits = 0
+        reward = 0.0
+
+        while not done:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return "quit"
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key in (pygame.K_q, pygame.K_ESCAPE):
+                        return "quit"
+                    if event.key == pygame.K_n:
+                        return "next"
+                    if event.key == pygame.K_r:
+                        score_left = 0
+                        score_right = 0
+                        episode = 1
+                        return "restart"
+
+            opponent_state = env.get_obs_opponent()
+
+            if deterministic:
+                player_action = greedy_action(agent, state)
+            else:
+                player_action, _, _ = agent.select_action(state)
+
+            opponent_action = rule_based_action(opponent_state)
+
+            prev_ball_vx = env.ball_vx
+
+            next_state, reward, terminated, truncated, _ = env.step(
+                (player_action, opponent_action)
+            )
+
+            if not terminated and prev_ball_vx < 0 and env.ball_vx > 0:
+                hits += 1
+
+            state = np.array(next_state, dtype=np.float32)
+            done = terminated or truncated
+
+            renderer.draw(
+                model_name=model_path.name,
+                episode=episode,
+                score_left=score_left,
+                score_right=score_right,
+                hits=hits,
+            )
+            renderer.clock.tick(fps)
+
+        if reward > 0:
+            score_left += 1
+        elif reward < 0:
+            score_right += 1
+
+        print(
+            f"{model_path.name} | Episode {episode:2d} | "
+            f"reward={reward:+.1f} | hits={hits:4d} | "
+            f"score {score_left}:{score_right}"
+        )
+
+        episode += 1
+        time.sleep(0.35)
+
+    return "next"
+
+
+def visualize_all(
+    n_episodes_per_model=10,
+    fps=60,
+    hidden_dim=128,
+    deterministic=True,
+):
+    model_paths = existing_models()
+
+    if not model_paths:
+        raise FileNotFoundError("No Pong model files found in experiments/")
+
+    env = PongEnv(max_steps=2000)
+    renderer = PongRenderer(env)
 
     try:
-        for episode in range(1, n_episodes + 1):
-            state, _ = env.reset()
-            state = np.array(state, dtype=np.float32)
-            done = False
+        index = 0
 
-            while not done:
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        return
+        while index < len(model_paths):
+            model_path = model_paths[index]
+            print(f"\nTesting model: {model_path.name}")
 
-                opponent_state = env.get_obs_opponent()
+            result = test_model_against_rule(
+                model_path=model_path,
+                renderer=renderer,
+                env=env,
+                n_episodes=n_episodes_per_model,
+                fps=fps,
+                hidden_dim=hidden_dim,
+                deterministic=deterministic,
+            )
 
-                if deterministic:
-                    player_action = greedy_action(agent, state)
-                    opponent_action = greedy_action(agent, opponent_state)
-                else:
-                    player_action, _, _ = agent.select_action(state)
-                    opponent_action, _, _ = agent.select_action(opponent_state)
+            if result == "quit":
+                break
 
-                next_state, reward, terminated, truncated, _ = env.step((player_action, opponent_action))
-                state = np.array(next_state, dtype=np.float32)
-                done = terminated or truncated
+            if result == "restart":
+                continue
 
-                renderer.draw(episode, score_left, score_right)
-                renderer.clock.tick(fps)
-
-            if reward > 0:
-                score_left += 1
-            elif reward < 0:
-                score_right += 1
-
-            time.sleep(0.4)
+            index += 1
 
     finally:
         renderer.close()
@@ -158,5 +282,9 @@ def visualize(
 
 
 if __name__ == "__main__":
-    MODEL_PATH = ROOT_DIR / "experiments" / "ppo_pong_selfplay.pth"
-    visualize(model_path=MODEL_PATH, n_episodes=10, fps=60, deterministic=True)
+    visualize_all(
+        n_episodes_per_model=10,
+        fps=60,
+        hidden_dim=128,
+        deterministic=True,
+    )
