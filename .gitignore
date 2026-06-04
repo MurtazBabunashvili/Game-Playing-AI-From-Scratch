@@ -90,3 +90,5 @@ Pipfile.lock
 runs/
 *.pth
 *.csv
+
+research/
